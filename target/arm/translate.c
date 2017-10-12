@@ -93,6 +93,64 @@ static const char *regnames[] =
     { "r0", "r1", "r2", "r3", "r4", "r5", "r6", "r7",
       "r8", "r9", "r10", "r11", "r12", "r13", "r14", "pc" };
 
+if defined(REG_MAPPING)
+void arm_translate_adjust(void)
+{
+    int i, j;
+
+    cpu_env = tcg_global_reg_new_ptr(TCG_AREG0, "env");
+
+    for (i = 0; i < 16; i++) {
+        for (j = 0; j < NUM_AREG; j++) {
+            if (i == register_hot_order_cur[j]) {
+                cpu_R[i] = tcg_global_reg_new_i32(tcg_areg_alloc_order[j], regnames[i]);
+                break;
+            }
+        }
+        if (j < NUM_AREG)
+            continue;
+        else
+            cpu_R[i] = tcg_global_mem_new_i32(cpu_env,
+                                          offsetof(CPUARMState, regs[i]),
+                                          regnames[i]);
+    }
+
+    cpu_CF = cpu_NF = cpu_VF = cpu_ZF = (TCGv_i32)-1;
+
+    for (j = 0; j < NUM_AREG; j++) {
+        if (register_hot_order_cur[j] == CF_IDX)
+            cpu_CF = tcg_global_reg_new_i32(tcg_areg_alloc_order[j], "CF");
+        else if (register_hot_order_cur[j] == NF_IDX)
+            cpu_NF = tcg_global_reg_new_i32(tcg_areg_alloc_order[j], "NF");
+        else if (register_hot_order_cur[j] == VF_IDX)
+            cpu_VF = tcg_global_reg_new_i32(tcg_areg_alloc_order[j], "VF");
+        else if (register_hot_order_cur[j] == ZF_IDX)
+            cpu_ZF = tcg_global_reg_new_i32(tcg_areg_alloc_order[j], "ZF");
+    }
+
+    if (cpu_CF == (TCGv_i32)-1)
+        cpu_CF = tcg_global_mem_new_i32(cpu_env, offsetof(CPUARMState, CF), "CF");
+    if (cpu_NF == (TCGv_i32)-1)
+        cpu_NF = tcg_global_mem_new_i32(cpu_env, offsetof(CPUARMState, NF), "NF");
+    if (cpu_VF == (TCGv_i32)-1)
+        cpu_VF = tcg_global_mem_new_i32(cpu_env, offsetof(CPUARMState, VF), "VF");
+    if (cpu_ZF == (TCGv_i32)-1)
+        cpu_ZF = tcg_global_mem_new_i32(cpu_env, offsetof(CPUARMState, ZF), "ZF");
+
+    cpu_exclusive_addr = tcg_global_mem_new_i64(cpu_env,
+        offsetof(CPUARMState, exclusive_addr), "exclusive_addr");
+    cpu_exclusive_val = tcg_global_mem_new_i64(cpu_env,
+        offsetof(CPUARMState, exclusive_val), "exclusive_val");
+#ifdef CONFIG_USER_ONLY
+    cpu_exclusive_test = tcg_global_mem_new_i64(cpu_env,
+        offsetof(CPUARMState, exclusive_test), "exclusive_test");
+    cpu_exclusive_info = tcg_global_mem_new_i32(cpu_env,
+        offsetof(CPUARMState, exclusive_info), "exclusive_info");
+#endif
+
+    a64_translate_init();
+}
+#endif
 /* initialize TCG globals.  */
 void arm_translate_init(void)
 {
