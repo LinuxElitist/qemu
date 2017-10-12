@@ -58,6 +58,23 @@
 #define IS_USER(s) (s->user)
 #endif
 
+//To enable efficient register mapping during translation so that offloader systems may benefit a bit
+#include "exec/gen-icount.h"
+
+static const char *regnames[] =
+    { "r0", "r1", "r2", "r3", "r4", "r5", "r6", "r7",
+      "r8", "r9", "r10", "r11", "r12", "r13", "r14", "pc" };
+
+#if defined(REG_MAPPING)
+int register_mapping_enable = 0;
+int register_hot_order_pre[GLOBAL_REGISTER_NUM] = {0};
+int register_hot_order_cur[GLOBAL_REGISTER_NUM] = {0};
+// = {
+//    15, 16, 17, 18, 19, 3, 4, 0, 2, 1, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, /* perlbench_ref2 */
+//};
+extern const int tcg_areg_alloc_order[];
+#endif
+
 TCGv_env cpu_env;
 /* We reuse the same 64-bit temporaries for efficiency.  */
 static TCGv_i64 cpu_V0, cpu_V1, cpu_M0;
